@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <title>Votre Titre</title>
+    <style>
+        body {
+            padding-top: 56px;
+        }
+        .container-fluid {
+            margin-top: 20px;
+        }
+        #scan-frame {
+            border: 1px solid #ddd;
+            padding: 20px;
+            min-height: 300px;
+            overflow-y: scroll; /* Permet le défilement vertical si nécessaire */
+            max-height: 400px;  /* Limite la hauteur pour éviter un cadre trop grand */
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <a class="navbar-brand" href="#">Votre Grand Titre</a>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="btn-group-vertical">
+
+                    <button id="detectScanBtn" type="button" class="btn btn-primary">Detect Scan</button>
+
+                    <!-- Ajoutez autant de boutons que nécessaire -->
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div id="scan-frame">
+                    <!-- Le cadre pour afficher le scan Scapy en temps réel -->
+                    <!-- Vous pouvez ajouter du contenu dynamique ici avec JavaScript -->
+                </div>
+                <div>
+                    <a href="{{ url_for('afficher_fichier') }}" class="btn btn-primary">Afficher le fichier</a>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <button id="startScanBtn" type="button" class="btn btn-success">Start Scan</button>
+                <button id="stopScanBtn" type="button" class="btn btn-danger">Stop Scan</button>
+                <button type="button" class="btn btn-info">Generate Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Action du bouton "Start Scan"
+            $("#startScanBtn").click(function() {
+                $.get("/start_scan", function(data) {
+                    alert(data); // Vous pouvez gérer la réponse de la route ici
+                    // Ajoutez ici du code pour démarrer la mise à jour des résultats du scan
+                    mettreAJourResultatsScan();
+                });
+            });
+
+            // Action du bouton "Stop Scan"
+            $("#stopScanBtn").click(function() {
+                $.get("/stop_scan", function(data) {
+                    alert(data); // Vous pouvez gérer la réponse de la route ici
+                });
+            });
+
+            // Action du bouton "Detect Scan"
+            $("#detectScanBtn").click(function() {
+                $.get("/detect_scan", function(data) {
+                    alert(data); // Vous pouvez gérer la réponse de la route ici
+                });
+            });
+
+            // Fonction pour mettre à jour les résultats du scan
+            function mettreAJourResultatsScan() {
+                setInterval(function() {
+                    // Récupérer les résultats du scan via AJAX
+                    $.get("/get_scan_results", function(data) {
+                        // Mettre à jour la boîte du milieu avec les résultats
+                        $("#scan-frame").html(data.resultats.join('<br>'));
+                    });
+                }, 1000);  // Mettre à jour toutes les 1000 millisecondes (10 secondes)
+            }
+        });
+    </script>
+</body>
+</html>
