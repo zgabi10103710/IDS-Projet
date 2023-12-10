@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_file
+from flask import Flask, render_template, send_file , request
 from scapy.all import *
 import threading
 import time
@@ -11,6 +11,8 @@ scapy_scan_resultats = []
 nombre_ports_detectes = 0
 scapy_scan_en_cours = False
 detection_ports_active = False
+selected_interface = "anpi0"  # Interface par défaut
+
 
 def sauvegarder_resultats_scan(resultats):
     with open(CHEMIN_FICHIER_SAUVEGARDE, 'a') as fichier:
@@ -30,7 +32,7 @@ def detecter_scan_ports(packets):
 def scanner_scapy():
     global scapy_scan_resultats
     while scapy_scan_en_cours:
-        packets = sniff(count=10)
+        packets = sniff(count=10 , iface=selected_interface )
         scapy_scan_resultats = packets
         detecter_scan_ports(scapy_scan_resultats)
         sauvegarder_resultats_scan(scapy_scan_resultats)
@@ -47,9 +49,13 @@ def demarrer_detection_scan():
 def accueil():
     return render_template('accueil.html')
 
-@app.route('/start_scan')
+@app.route('/start_scan' , methods=['POST'])
 def demarrer_scan():
-    global scapy_scan_en_cours, detection_ports_active
+    global scapy_scan_en_cours, detection_ports_active , selected_interface
+    selected_interface = request.form.get('interface', 'anpi0')
+
+
+
     if not scapy_scan_en_cours:
         scapy_scan_en_cours = True
         detection_ports_active = True  # Activer la détection lors du démarrage du scan

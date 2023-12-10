@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <title>Votre Titre</title>
+    <title>IDS Detection NIMA</title>
     <style>
         body {
             padding-top: 56px;
@@ -23,16 +23,25 @@
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <a class="navbar-brand" href="#">IDS DETECTION NIMA </a>
+        <a class="navbar-brand" href="#">IDS DETECTION NIMA</a>
     </nav>
 
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-3">
+                <div class="form-group">
+                    <label for="interfaceSelect">Sélectionnez l'interface:</label>
+                    <select class="form-control" id="interfaceSelect" name="interface">
+                        <option value="eth0">eth0</option>
+                        <option value="en0">en0</option>
+                        <!-- Ajoutez d'autres interfaces si nécessaire -->
+                    </select>
+                </div>
+
                 <div class="btn-group-vertical">
                     <button id="startScanBtn" type="button" class="btn btn-success">Start Scan</button>
                     <button id="stopScanBtn" type="button" class="btn btn-danger">Stop Scan</button>
-                    <button id="toggleDetectionBtn" type="button" class="btn btn-warning">Detection port</button>
+                    <button id="toggleDetectionBtn" type="button" class="btn btn-warning">Toggle Detection</button>
                     <a href="{{ url_for('afficher_fichier') }}" class="btn btn-primary">Afficher le fichier</a>
                 </div>
             </div>
@@ -58,7 +67,8 @@
         $(document).ready(function() {
             // Action du bouton "Start Scan"
             $("#startScanBtn").click(function() {
-                $.get("/start_scan", function(data) {
+                var selectedInterface = $("#interfaceSelect").val();
+                $.post("/start_scan", { interface: selectedInterface }, function(data) {
                     alert(data);
                     mettreAJourResultatsScan();
                 });
