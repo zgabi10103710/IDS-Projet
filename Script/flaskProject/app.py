@@ -10,6 +10,7 @@ CHEMIN_FICHIER_SAUVEGARDE = 'resultats_scan.txt'
 scapy_scan_resultats = []
 nombre_ports_detectes = 0
 scapy_scan_en_cours = False
+detection_ports_active = False
 
 def sauvegarder_resultats_scan(resultats):
     with open(CHEMIN_FICHIER_SAUVEGARDE, 'a') as fichier:
@@ -20,7 +21,7 @@ def sauvegarder_resultats_scan(resultats):
 def detecter_scan_ports(packets):
     global nombre_ports_detectes
     for packet in packets:
-        if IP in packet and TCP in packet:
+        if IP in packet and TCP in packet and detection_ports_active:
             ip_src, tcp_dport = packet[IP].src, packet[TCP].dport
             if tcp_dport == 21:
                 nombre_ports_detectes += 1
@@ -42,30 +43,33 @@ def demarrer_detection_scan():
             detecter_scan_ports(scapy_scan_resultats)
         time.sleep(1)
 
-
-## ---------------
-    # ROUTE
-## ---------------
-
 @app.route('/')
 def accueil():
     return render_template('accueil.html')
 
 @app.route('/start_scan')
 def demarrer_scan():
-    global scapy_scan_en_cours
+    global scapy_scan_en_cours, detection_ports_active
     if not scapy_scan_en_cours:
         scapy_scan_en_cours = True
+        detection_ports_active = True  # Activer la détection lors du démarrage du scan
         threading.Thread(target=scanner_scapy).start()
         threading.Thread(target=demarrer_detection_scan).start()
     return "Scan démarré avec succès"
 
 @app.route('/stop_scan')
 def arreter_scan():
-    global scapy_scan_en_cours, scapy_scan_resultats
+    global scapy_scan_en_cours, scapy_scan_resultats, detection_ports_active
     scapy_scan_en_cours = False
     scapy_scan_resultats = []
+    detection_ports_active = False  # Désactiver la détection lors de l'arrêt du scan
     return "Scan arrêté avec succès"
+
+@app.route('/toggle_detection_ports')
+def basculer_detection_ports():
+    global detection_ports_active
+    detection_ports_active = not detection_ports_active
+    return f"La détection des ports est maintenant {'activée' if detection_ports_active else 'désactivée'}."
 
 @app.route('/get_scan_results')
 def obtenir_resultats_scan():
