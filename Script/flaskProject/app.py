@@ -58,6 +58,11 @@ if not os.path.exists(LOG_DIRECTORY):
     os.makedirs(LOG_DIRECTORY)
 
 
+
+def fichier_saveVul(data):
+    with open(os.path.join(LOG_DIRECTORY, "vulnerability.txt"), "a") as vuln_file:
+        vuln_file.write(f"{data}\n")
+
 # Fonctions utilitairesc
 #cplus de 10 port sur ip
 def detecter_scan_ports(packets):
@@ -70,22 +75,17 @@ def detecter_scan_ports(packets):
             ip_src = packet[IP].src
             dst_port = packet[TCP].dport if TCP in packet else packet[UDP].dport
             src_ip_to_ports.setdefault(ip_src, set()).add(dst_port)
+
     for src_ip, ports in src_ip_to_ports.items():
         if len(ports) > 10:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             alert = f"Activité suspecte détectée : scan Nmap de ports depuis {src_ip} vers {ports}"
-            print(f"{timestamp} - {alert}")
-
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # Enregistrez dans un fichier spécifique pour cette IP
-            filename = os.path.join(LOG_DIRECTORY, f"nmap_scan_{src_ip}_{timestamp}.log")
-            with open(filename, 'w') as log_file:
-                log_file.write(f"{timestamp} - {alert}")
+            ligne = timestamp + "-" + alert
+            fichier_saveVul(ligne)
 
-            nombre_ports_detectes += 1
 
-            suspicious.append(alert)
 
-    return suspicious if len(suspicious) > 0 else False
 
 
 
@@ -114,7 +114,15 @@ def detection_bruteforce(packet):
             else:
                 ssh_failed_attempts[ip_address] += 1
             if ssh_failed_attempts[ip_address] >= threshold_attempts:
-                print(f"Possible attaque de force brute depuis {ip_address}")
+
+                with open(os.path.join(LOG_DIRECTORY, "vulnerability.txt"), "a") as vuln_file:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    alert = f"{timestamp} - Possible attaque de force brute depuis {ip_address}"
+                    # Enregistrez dans un fichier spécifique pour cette IP
+                    ligne =  alert
+                    fichier_saveVul(ligne)
+
+
 
 # Fonction de callback pour le paquet ARP
 def Arp_Spoffing(packet):
@@ -125,7 +133,13 @@ def Arp_Spoffing(packet):
         if arp_src_ip in ip_mac_mapping:
 
             if ip_mac_mapping[arp_src_ip] != arp_src_mac:
-                print(f"Possible ARP spoofing detected! IP: {arp_src_ip}, Old MAC: {ip_mac_mapping[arp_src_ip]}, New MAC: {arp_src_mac}")
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                alert = f"Possible ARP spoofing detected! IP: {arp_src_ip}, Old MAC: {ip_mac_mapping[arp_src_ip]}, New MAC: {arp_src_mac}"
+                # Enregistrez dans un fichier spécifique pour cette IP
+                ligne = timestamp + "-" + alert
+                fichier_saveVul(ligne)
+
+
         else:
             ip_mac_mapping[arp_src_ip] = arp_src_mac
 
