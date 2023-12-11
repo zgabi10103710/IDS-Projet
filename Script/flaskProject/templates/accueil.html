@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <title>Votre Titre</title>
+    <title>IDS Detection</title>
     <style>
         body {
             padding-top: 56px;
@@ -12,25 +12,40 @@
         .container-fluid {
             margin-top: 20px;
         }
-        #scan-frame {
+        #scan-frame, #scan-frame-realtime {
             border: 1px solid #ddd;
             padding: 20px;
             min-height: 300px;
             overflow-y: scroll;
             max-height: 400px;
+            margin-bottom: 20px;
         }
-        #scan-frame-realtime {
+        .navbar {
+            background-color: #343a40;
+        }
+        .navbar-dark .navbar-brand {
+            color: #ffffff;
+        }
+        .navbar-dark .navbar-toggler-icon {
+            background-color: #ffffff;
+        }
+        .btn-group-vertical {
+            width: 100%;
+        }
+        .btn-group-vertical .btn {
+            width: 100%;
+            text-align: left;
+        }
+        .synthese-box {
             border: 1px solid #ddd;
-            padding: 20px;
-            min-height: 300px;
-            overflow-y: scroll;
-            max-height: 400px;
+            padding: 15px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <a class="navbar-brand" href="#">IDS DETECTION NIMA </a>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <a class="navbar-brand" href="#">IDS Detection</a>
     </nav>
 
     <div class="container-fluid">
@@ -47,23 +62,27 @@
                 <div class="btn-group-vertical">
                     <button id="startScanBtn" type="button" class="btn btn-success">Start Scan</button>
                     <button id="stopScanBtn" type="button" class="btn btn-danger">Stop Scan</button>
-                    <button id="toggleDetectionBtn" type="button" class="btn btn-warning">Toggle Detection</button>
-                    <button id="toggleMITMBtn" type="button" class="btn btn-info">Toggle MITM</button>
 
-                    <button id="genererRapportBtn" type="button" class="btn btn-primary">Générer Rapport</button>
-                    <a href="{{ url_for('afficher_fichier') }}" class="btn btn-primary">Afficher le fichier</a>
+
+                    <h5>Contrôle de la Détection</h5>
+
+                    <button id="toggleDetectionBruteforce" type="button" class="btn btn-warning">Toggle Brute Force</button>
+                    <button id="toggleDetectionSpoofing" type="button" class="btn btn-info">Toggle ARP Spoofing</button>
+
+                    <button id="toggleDetectionBtns" type="button" class="btn btn-warning">Toggle Detection</button>
+                    <button id="toggleMITMBtn" type="button" class="btn btn-info">Toggle MITM</button>
+                    <button id="genererRapportBtn" type="button" class="btn btn-primary mt-2">Générer Rapport</button>
+                    <a href="{{ url_for('afficher_fichier') }}" class="btn btn-primary mt-2">Afficher le fichier</a>
                 </div>
             </div>
             <div class="col-md-6">
-                <div id="scan-frame">
+                <div id="scan-frame" class="synthese-box">
                 </div>
-
             </div>
             <div class="col-md-3">
                 <h5>Synthèse</h5>
                 <p>Nombre de ports détectés: <span id="nombre-ports"></span></p>
                 <p>Man in the middle: <span id="nombre-mitm"></span></p>
-
             </div>
         </div>
     </div>
@@ -71,6 +90,7 @@
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
 
     <script>
         $(document).ready(function() {
@@ -86,11 +106,24 @@
                 });
             });
 
-            $("#toggleDetectionBtn").click(function() {
+            $("#toggleDetectionBtns").click(function() {
                 $.get("/toggle_detection_ports", function(data) {
                     alert(data);
                 });
             });
+
+            $("#toggleDetectionSpoofing").click(function() {
+                $.get("/toggle_arp_spoofing", function(data) {
+                    alert(data);
+                });
+            });
+
+            $("#toggleDetectionBruteforce").click(function() {
+                $.get("/toggle_bruteforce_detection", function(data) {
+                    alert(data);
+                });
+            });
+
 
             $("#toggleMITMBtn").click(function() {
                 $.get("/toggle_mitm", function(data) {
