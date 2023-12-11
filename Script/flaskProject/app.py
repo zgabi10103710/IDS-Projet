@@ -62,37 +62,31 @@ if not os.path.exists(LOG_DIRECTORY):
 #cplus de 10 port sur ip
 def detecter_scan_ports(packets):
     global nombre_ports_detectes, scans_par_ip, history
+    src_ip_to_ports = {}
+    suspicious = []
 
     for packet in packets:
-        if IP in packet and TCP in packet and detection_ports_active:
-            ip_src, tcp_dport = packet[IP].src, packet[TCP].dport
-
-            if ip_src not in scans_par_ip:
-                scans_par_ip[ip_src] = {'ports': set(), 'last_scan_time': time.time()}
-
-            scans_par_ip[ip_src]['ports'].add(tcp_dport)
-
-            current_time = time.time()
-            last_scan_time = scans_par_ip[ip_src]['last_scan_time']
-
-            if current_time - last_scan_time > WINDOW_TIME:
-                # Réinitialiser la fenêtre de temps si elle a expiré
-                scans_par_ip[ip_src]['ports'] = {tcp_dport}
-                scans_par_ip[ip_src]['last_scan_time'] = current_time
-            elif len(scans_par_ip[ip_src]['ports']) > MAX_SCANS_IN_WINDOW:
-                # Ignorer les scans supplémentaires dans la fenêtre de temps
-                continue
-
+        if IP in packet and (TCP in packet or UDP in packet) and detection_ports_active:
+            ip_src = packet[IP].src
+            dst_port = packet[TCP].dport if TCP in packet else packet[UDP].dport
+            src_ip_to_ports.setdefault(ip_src, set()).add(dst_port)
+    for src_ip, ports in src_ip_to_ports.items():
+        if len(ports) > 10:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            alert = f"Activité suspecte détectée : scan Nmap de ports depuis {ip_src}"
+            alert = f"Activité suspecte détectée : scan Nmap de ports depuis {src_ip} vers {ports}"
             print(f"{timestamp} - {alert}")
 
             # Enregistrez dans un fichier spécifique pour cette IP
-            filename = os.path.join(LOG_DIRECTORY, f"nmap_scan_{ip_src}_{timestamp}.log")
+            filename = os.path.join(LOG_DIRECTORY, f"nmap_scan_{src_ip}_{timestamp}.log")
             with open(filename, 'w') as log_file:
                 log_file.write(f"{timestamp} - {alert}")
 
             nombre_ports_detectes += 1
+
+            suspicious.append(alert)
+
+    return suspicious if len(suspicious) > 0 else False
+
 
 
 def detecter_attaque_mitm(packet):
