@@ -6,6 +6,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from scapy.all import *
 from datetime import datetime
+import requests
+
 
 # Flask App
 from scapy.layers.l2 import ARP
@@ -51,7 +53,7 @@ ip_mac_mapping = {
 '192.168.56.150': '08:00:27:7E:B5:3C'
 } # mac adress
 
-
+ntfy_server_url = 'http://89.116.181.163:81/AqlusogVuyQrodFN'
 
 LOG_DIRECTORY = "logs"
 
@@ -71,7 +73,6 @@ def detecter_scan_ports(packets):
     global nombre_ports_detectes, scans_par_ip, history
     src_ip_to_ports = {}
     suspicious = []
-
     for packet in packets:
         if IP in packet and (TCP in packet or UDP in packet) and detection_ports_active:
             ip_src = packet[IP].src
@@ -83,24 +84,15 @@ def detecter_scan_ports(packets):
             alert = f"Activité suspecte détectée : scan Nmap de ports depuis {src_ip} vers {ports}"
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # Enregistrez dans un fichier spécifique pour cette IP
+            requests.get(ntfy_server_url, params={'message': alert})
+
             ligne = timestamp + "-" + alert
             fichier_saveVul(ligne)
 
 
 
-def detecter_attaque_mitm(packet):
-    global mitm_active, mitm_Detecter
-    if mitm_active:
-        mitm_Detecter += 1
-        if IP in packet:
-            expected_length = packet[IP].len
-            actual_length = len(packet)
-            print(len(packet))
-            mitm_Detecter += 1
-            if expected_length != actual_length:
-                return True
-        return False
-    return False
+
+
 
 # Fonction pour gérer les paquets Scapy
 def detection_bruteforce(packet):
@@ -118,6 +110,8 @@ def detection_bruteforce(packet):
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     alert = f"{timestamp} - Possible attaque de force brute depuis {ip_address}"
                     # Enregistrez dans un fichier spécifique pour cette IP
+                    requests.get(ntfy_server_url, params={'message': alert})
+
                     ligne =  alert
                     fichier_saveVul(ligne)
 
@@ -128,13 +122,16 @@ def Arp_Spoffing(packet):
     if  arp_spoffing_active and ARP in packet:
         arp_src_ip = packet[ARP].psrc
         arp_src_mac = packet[ARP].hwsrc
-        print("Arp spoofing ")
         if arp_src_ip in ip_mac_mapping:
 
             if ip_mac_mapping[arp_src_ip] != arp_src_mac:
+                print("Arp spoofing ")
+
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 alert = f"Possible ARP spoofing detected! IP: {arp_src_ip}, Old MAC: {ip_mac_mapping[arp_src_ip]}, New MAC: {arp_src_mac}"
                 # Enregistrez dans un fichier spécifique pour cette IP
+                requests.get(ntfy_server_url, params={'message': alert})
+
                 ligne = timestamp + "-" + alert
                 fichier_saveVul(ligne)
         else:
@@ -152,7 +149,6 @@ def scanner_scapy():
         try:
             packets = sniff(count=100, iface=selected_interface, prn=packet_callback)
             scapy_scan_resultats = packets
-            detecter_attaque_mitm(scapy_scan_resultats)
             sauvegarder_resultats_scan(scapy_scan_resultats)
             time.sleep(1)
         except Exception as e:
@@ -190,7 +186,7 @@ def envoyer_email(subject, body):
 # Routes Flask
 @app.route('/')
 def accueil():
-    return render_template('accueil.html')
+    return render_template('home.html')
 
 @app.route('/start_scan', methods=['POST'])
 def demarrer_scan():
@@ -217,12 +213,6 @@ def basculer_detection_ports():
     global detection_ports_active
     detection_ports_active = not detection_ports_active
     return f"La détection des ports est maintenant {'activée' if detection_ports_active else 'désactivée'}."
-
-@app.route('/toggle_mitm')
-def basculer_attaque_mitm():
-    global mitm_active
-    mitm_active = not mitm_active
-    return f"L'attaque Man-In-The-Middle est maintenant {'activée' if mitm_active else 'désactivée'}."
 
 
 @app.route('/toggle_arp_spoofing')
@@ -274,6 +264,10 @@ def detecter_scan():
     detecter_scan_ports(scapy_scan_resultats)
     nombre_ports_detectes += 1
     return "Detection de scan effectuée avec succès"
+
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -72,7 +72,6 @@
                     <button id="toggleDetectionSpoofing" type="button" class="btn btn-info">Toggle ARP Spoofing</button>
 
                     <button id="toggleDetectionBtns" type="button" class="btn btn-warning">Toggle Detection</button>
-                    <button id="toggleMITMBtn" type="button" class="btn btn-info">Toggle MITM</button>
                     <button id="genererRapportBtn" type="button" class="btn btn-primary mt-2">Générer Rapport</button>
                     <a href="{{ url_for('afficher_fichier') }}" class="btn btn-primary mt-2">Afficher le fichier</a>
                 </div>
@@ -126,12 +125,6 @@
                 });
             });
 
-
-            $("#toggleMITMBtn").click(function() {
-                $.get("/toggle_mitm", function(data) {
-                    alert(data);
-                });
-            });
             $("#genererRapportBtn").click(function() {
                 $.get("/generer_rapport", function(data) {
                     alert(data);
