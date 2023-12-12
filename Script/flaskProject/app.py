@@ -47,7 +47,9 @@ MAX_SCANS_IN_WINDOW = 5
 ssh_failed_attempts = {}  # Dictionnaire pour stocker les tentatives échouées par adresse IP
 threshold_attempts = 3  # Seuil de tentatives avant de considérer une attaque
 
-ip_mac_mapping = {}
+ip_mac_mapping = {
+'192.168.1.1': '08:00:27:7E:B5:3C'
+} # mac adress
 
 
 
@@ -83,9 +85,6 @@ def detecter_scan_ports(packets):
             # Enregistrez dans un fichier spécifique pour cette IP
             ligne = timestamp + "-" + alert
             fichier_saveVul(ligne)
-
-
-
 
 
 
@@ -138,8 +137,6 @@ def Arp_Spoffing(packet):
                 # Enregistrez dans un fichier spécifique pour cette IP
                 ligne = timestamp + "-" + alert
                 fichier_saveVul(ligne)
-
-
         else:
             ip_mac_mapping[arp_src_ip] = arp_src_mac
 
