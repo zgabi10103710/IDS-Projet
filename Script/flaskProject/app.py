@@ -48,7 +48,7 @@ ssh_failed_attempts = {}  # Dictionnaire pour stocker les tentatives échouées 
 threshold_attempts = 3  # Seuil de tentatives avant de considérer une attaque
 
 ip_mac_mapping = {
-'192.168.1.1': '08:00:27:7E:B5:3C'
+'192.168.56.150': '08:00:27:7E:B5:3C'
 } # mac adress
 
 
