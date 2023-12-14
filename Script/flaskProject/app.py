@@ -17,13 +17,12 @@ app = Flask(__name__)
 
 # Constantes
 CHEMIN_FICHIER_SAUVEGARDE = 'resultats_scan.txt'
-EMAIL_SMTP_SERVER = 'smtp.example.com'
-EMAIL_SMTP_PORT = 587
-EMAIL_SMTP_USERNAME = 'your_username'
-EMAIL_SMTP_PASSWORD = 'your_password'
-EMAIL_FROM = 'your_email@example.com'
-EMAIL_TO = 'recipient@example.com'
-
+# Paramètres du compte Gmail
+GMAIL_SMTP_SERVER = 'smtp.gmail.com'
+GMAIL_SMTP_PORT = 587
+GMAIL_EMAIL_ADDRESS = 'sendeurmpsendeurmp@gmail.com'
+GMAIL_EMAIL_PASSWORD = 'thpc sarp htzi wpjh'
+EMAIL_TO = 'quiguer.jacques@gmail.com'
 # Variables globales
 scapy_scan_resultats = []
 scans_par_ip = {}
@@ -40,7 +39,7 @@ mitm_active = False
 selected_interface = "en0"  # Interface par défaut
 
 
-MAX_PORTS_SCAN_THRESHOLD = 50  # Vous pouvez ajuster ce seuil selon vos besoins
+MAX_PORTS_SCAN_THRESHOLD = 10  # Vous pouvez ajuster ce seuil selon vos besoins
 HISTORY_THRESHOLD = 3
 history = {}
 WINDOW_TIME = 60  # Fenêtre de temps en secondes
@@ -104,13 +103,25 @@ def detecter_scan_ports(packets):
     for src_ip, ports in src_ip_to_ports.items():
         for port in ports:
             if len(ports) > MAX_PORTS_SCAN_THRESHOLD and not check_vulnerability_history(src_ip, scan_type,   datetime.now()):
-                alert = f"Activité suspecte détectée : scan Nmap de ports depuis {src_ip} vers {port}"
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                requests.get(ntfy_server_url, params={'message': alert})
+                sujet  = "Alert NMAP Detect !!!!!"
+                alertEmail = f"Activité suspecte détectée : Un scan Nmap de ports a été détecté depuis l'adresse IP {src_ip} vers le port {port}." \
+                        f"Détails :" \
+                        f"- Adresse IP source : {src_ip}" \
+                        f"- Port de destination : {port}" \
+                        f"- Type de scan : Nmap" \
+                        f"Date et heure de la détection : {timestamp}" \
+                        f"Cette activité pourrait indiquer une tentative d'exploration ou de sondage de la sécurité du réseau. Veuillez enquêter et prendre les mesures appropriées pour renforcer la sécurité du réseau."
 
-                ligne = timestamp + "-" + alert
+                alertlog = f"Activité suspecte détectée : Un scan Nmap de ports a été détecté depuis l'adresse IP {src_ip} vers le port {port}."
+
+
+                ligne = timestamp + "-" + alertlog
+
+                envoyer_email(sujet,alertEmail)
+
                 fichier_saveVul(ligne)
-                nombre_ports_detectes += 1
+
 
 
 
@@ -129,12 +140,18 @@ def detection_bruteforce(packet):
                 ssh_failed_attempts[ip_address] += 1
             if ssh_failed_attempts[ip_address] >= threshold_attempts and  not check_vulnerability_history(ip_address, scan_type,   datetime.now()):
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                alert = f"{timestamp} - Possible attaque de force brute depuis {ip_address}"
                 # Enregistrez dans un fichier spécifique pour cette IP
-                requests.get(ntfy_server_url, params={'message': alert})
+                sujet  = "Alert BRUTEFORCE Detect !!!!!"
+
+                alertEmail = f"Possible attaque de force brute SSH détectée : Une tentative d'attaque de force brute a été détectée depuis l'adresse IP {ip_address} vers le port SSH (22).\n\nDétails :\n- Adresse IP source : {ip_address}\n- Port de destination : 22 (SSH)\n\nDate et heure de la détection : {timestamp}\n\nCette activité pourrait indiquer une tentative d'accès non autorisé au service SSH. Veuillez enquêter et prendre les mesures appropriées pour renforcer la sécurité du service SSH."
+
+                alert = f"{timestamp} - Possible attaque de force brute depuis {ip_address}"
+
 
                 ligne =  alert
                 fichier_saveVul(ligne)
+                envoyer_email(sujet,alertEmail)
+
 
 
 
@@ -150,9 +167,14 @@ def Arp_Spoffing(packet):
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 alert = f"Possible ARP spoofing detected! IP: {arp_src_ip}, Old MAC: {ip_mac_mapping[arp_src_ip]}, New MAC: {arp_src_mac}"
                 # Enregistrez dans un fichier spécifique pour cette IP
-                requests.get(ntfy_server_url, params={'message': alert})
+                sujet  = "Alert ARP Spoofing Detect !!!!!"
+
+                alertEmail = f"Possible ARP Spoofing détecté : Une activité suspecte a été détectée indiquant un possible ARP Spoofing.\n\nDétails :\n- Adresse IP source : {arp_src_ip}\n- Ancienne adresse MAC associée à l'IP : {ip_mac_mapping[arp_src_ip]}\n- Nouvelle adresse MAC détectée : {arp_src_mac}\n\nDate et heure de la détection : {timestamp}\n\nL'ARP Spoofing est une technique d'attaque visant à lier une adresse MAC à une adresse IP frauduleuse. Cela peut être utilisé pour des attaques man-in-the-middle. Veuillez enquêter et prendre les mesures appropriées pour sécuriser le réseau."
+
                 ligne = timestamp + "-" + alert
                 fichier_saveVul(ligne)
+                envoyer_email(sujet,alertEmail)
+
         else:
             ip_mac_mapping[arp_src_ip] = arp_src_mac
 
@@ -190,17 +212,17 @@ def sauvegarder_resultats_scan(resultats):
                 fichier.write(f"{timestamp} {str(packet.summary())}\n")
 
 
-def envoyer_email(subject, body):
+def envoyer_email(sujet, body):
     msg = MIMEMultipart()
-    msg['From'] = EMAIL_FROM
+    msg['From'] = GMAIL_EMAIL_ADDRESS
     msg['To'] = EMAIL_TO
-    msg['Subject'] = subject
+    msg['Subject'] = sujet
     msg.attach(MIMEText(body, 'plain'))
 
-    with smtplib.SMTP(EMAIL_SMTP_SERVER, EMAIL_SMTP_PORT) as server:
+    with smtplib.SMTP(GMAIL_SMTP_SERVER, GMAIL_SMTP_PORT) as server:
         server.starttls()
-        server.login(EMAIL_SMTP_USERNAME, EMAIL_SMTP_PASSWORD)
-        server.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
+        server.login(GMAIL_EMAIL_ADDRESS, GMAIL_EMAIL_PASSWORD)
+        server.sendmail(GMAIL_EMAIL_ADDRESS, EMAIL_TO, msg.as_string())
 
 # Routes Flask
 @app.route('/')
