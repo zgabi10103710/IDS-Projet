@@ -6,7 +6,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from scapy.all import *
 from datetime import datetime
-import requests
 from collections import defaultdict
 
 
