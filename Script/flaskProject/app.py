@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from scapy.all import *
 from datetime import datetime
 import requests
+from collections import defaultdict
 
 
 # Flask App
@@ -39,7 +40,7 @@ mitm_active = False
 selected_interface = "en0"  # Interface par défaut
 
 
-MAX_PORTS_SCAN_THRESHOLD = 10  # Vous pouvez ajuster ce seuil selon vos besoins
+MAX_PORTS_SCAN_THRESHOLD = 50  # Vous pouvez ajuster ce seuil selon vos besoins
 HISTORY_THRESHOLD = 3
 history = {}
 WINDOW_TIME = 60  # Fenêtre de temps en secondes
@@ -57,6 +58,27 @@ ntfy_server_url = 'http://89.116.181.163:81/AqlusogVuyQrodFN'
 
 LOG_DIRECTORY = "logs"
 
+
+# Historique des vulnérabilités détectées
+vulnerability_history = defaultdict(list)
+
+
+def check_vulnerability_history(ip, scan_type, timestamp):
+    global vulnerability_history
+
+    key = (ip, scan_type)
+    history = vulnerability_history[key]
+
+    # Vérifier si une alerte similaire a été émise récemment
+    if history and (timestamp - history[-1]).seconds < WINDOW_TIME:
+        return True  # La vulnérabilité a déjà été signalée récemment
+    else:
+        # Ajouter le timestamp actuel à l'historique
+        history.append(timestamp)
+        # Conserver uniquement les timestamps dans la fenêtre temporelle
+        vulnerability_history[key] = [t for t in history if (timestamp - t).seconds < WINDOW_TIME]
+        return False
+
 # Assurez-vous que le répertoire existe
 if not os.path.exists(LOG_DIRECTORY):
     os.makedirs(LOG_DIRECTORY)
@@ -67,28 +89,28 @@ def fichier_saveVul(data):
     with open(os.path.join(LOG_DIRECTORY, "vulnerability.txt"), "a") as vuln_file:
         vuln_file.write(f"{data}\n")
 
-# Fonctions utilitairesc
-#cplus de 10 port sur ip
+# Fonction pour détecter les scans de ports
 def detecter_scan_ports(packets):
-    global nombre_ports_detectes, scans_par_ip, history
-    src_ip_to_ports = {}
-    suspicious = []
+    global nombre_ports_detectes
+    scan_type = "Nmap"
+
+    src_ip_to_ports = defaultdict(set)
     for packet in packets:
         if IP in packet and (TCP in packet or UDP in packet) and detection_ports_active:
             ip_src = packet[IP].src
             dst_port = packet[TCP].dport if TCP in packet else packet[UDP].dport
-            src_ip_to_ports.setdefault(ip_src, set()).add(dst_port)
+            src_ip_to_ports[ip_src].add(dst_port)
 
     for src_ip, ports in src_ip_to_ports.items():
-        if len(ports) > 10:
-            alert = f"Activité suspecte détectée : scan Nmap de ports depuis {src_ip} vers {ports}"
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # Enregistrez dans un fichier spécifique pour cette IP
-            requests.get(ntfy_server_url, params={'message': alert})
+        for port in ports:
+            if len(ports) > MAX_PORTS_SCAN_THRESHOLD and not check_vulnerability_history(src_ip, scan_type,   datetime.now()):
+                alert = f"Activité suspecte détectée : scan Nmap de ports depuis {src_ip} vers {port}"
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                requests.get(ntfy_server_url, params={'message': alert})
 
-            ligne = timestamp + "-" + alert
-            fichier_saveVul(ligne)
-
+                ligne = timestamp + "-" + alert
+                fichier_saveVul(ligne)
+                nombre_ports_detectes += 1
 
 
 
@@ -96,6 +118,7 @@ def detecter_scan_ports(packets):
 
 # Fonction pour gérer les paquets Scapy
 def detection_bruteforce(packet):
+    scan_type = "SSH"
     if 'IP' in packet and 'TCP' in packet:
         ip_address = packet['IP'].src
         if packet['TCP'].dport == 22:  # Vérifier si le paquet est destiné au port SSH
@@ -104,34 +127,30 @@ def detection_bruteforce(packet):
                 ssh_failed_attempts[ip_address] = 1
             else:
                 ssh_failed_attempts[ip_address] += 1
-            if ssh_failed_attempts[ip_address] >= threshold_attempts:
+            if ssh_failed_attempts[ip_address] >= threshold_attempts and  not check_vulnerability_history(ip_address, scan_type,   datetime.now()):
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                alert = f"{timestamp} - Possible attaque de force brute depuis {ip_address}"
+                # Enregistrez dans un fichier spécifique pour cette IP
+                requests.get(ntfy_server_url, params={'message': alert})
 
-                with open(os.path.join(LOG_DIRECTORY, "vulnerability.txt"), "a") as vuln_file:
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    alert = f"{timestamp} - Possible attaque de force brute depuis {ip_address}"
-                    # Enregistrez dans un fichier spécifique pour cette IP
-                    requests.get(ntfy_server_url, params={'message': alert})
-
-                    ligne =  alert
-                    fichier_saveVul(ligne)
+                ligne =  alert
+                fichier_saveVul(ligne)
 
 
 
 # Fonction de callback pour le paquet ARP
 def Arp_Spoffing(packet):
+    scan_type = "ARP"
     if  arp_spoffing_active and ARP in packet:
         arp_src_ip = packet[ARP].psrc
         arp_src_mac = packet[ARP].hwsrc
-        if arp_src_ip in ip_mac_mapping:
+        if arp_src_ip in ip_mac_mapping :
 
-            if ip_mac_mapping[arp_src_ip] != arp_src_mac:
-                print("Arp spoofing ")
-
+            if ip_mac_mapping[arp_src_ip] != arp_src_mac and  not check_vulnerability_history(arp_src_ip, scan_type,   datetime.now()):
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 alert = f"Possible ARP spoofing detected! IP: {arp_src_ip}, Old MAC: {ip_mac_mapping[arp_src_ip]}, New MAC: {arp_src_mac}"
                 # Enregistrez dans un fichier spécifique pour cette IP
                 requests.get(ntfy_server_url, params={'message': alert})
-
                 ligne = timestamp + "-" + alert
                 fichier_saveVul(ligne)
         else:
