@@ -291,13 +291,7 @@ def obtenir_nombre_mitm():
     global mitm_Detecter
     return {'Mitn': mitm_Detecter}
 
-@app.route('/generer_rapport')
-def generer_rapport():
-    subject = "Rapport de l'analyse du réseau"
-    body = f"Nombre de ports détectés: {nombre_ports_detectes}\n" \
-           f"Nombre d'attaques Man-In-The-Middle détectées: {mitm_Detecter}"
-    envoyer_email(subject, body)
-    return "Rapport généré et envoyé par e-mail avec succès."
+
 
 @app.route('/detect_scan')
 def detecter_scan():
